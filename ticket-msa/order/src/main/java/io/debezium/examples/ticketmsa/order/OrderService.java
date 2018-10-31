@@ -13,6 +13,7 @@ import io.debezium.examples.ticketmsa.order.model.Order;
 
 @Path("/orders")
 @ApplicationScoped
+@KafkaConfig(bootstrapServers = "#{KAFKA_SERVICE_HOST}:#{KAFKA_SERVICE_PORT}")
 public class OrderService {
 
     @PersistenceContext
@@ -24,6 +25,14 @@ public class OrderService {
     @Consumes("application/json")
     public Order addOrder(Order order) {
         order = entityManager.merge(order);
+        kafka.send(topicName, order.getId(), order.toJson());
         return order;
     }
+
+    @Inject
+    @ConfigProperty(name="order.topic.name", defaultValue="orders")
+    private String topicName;
+
+    @Producer
+    private SimpleKafkaProducer<Integer, JsonObject> kafka;
 }
